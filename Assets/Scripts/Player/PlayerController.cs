@@ -14,7 +14,7 @@ public class PlayerController : MonoBehaviour {
     }
 
     void FixedUpdate() {
-        movement.x = Input.GetAxis("Horizontal");
+        movement.x = Input.GetAxis("Horizontal"); // -1, 0, 1
         movement.y = Input.GetAxis("Vertical");
 
         #region Own implementation test

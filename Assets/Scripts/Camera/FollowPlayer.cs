@@ -1,17 +1,32 @@
-﻿using System.Collections;
+﻿using System.Threading;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class FollowPlayer : MonoBehaviour {
 
+    public static FollowPlayer instance;
+
     private BoxCollider2D cameraBox; // The BoxCollider of camera
     private Transform player; // Position of player
     private float currentResolutionRatio; // Will track the current screen resolution ratio
 
+    private bool isAbleToClamp = true;
+
+    private float cameraDelay;
+
+    private float playerClampX;
+    private float playerClampY;
+
+    private Vector3 lastPlayerPositionReached;
+
     void Start() {
         cameraBox = GetComponent<BoxCollider2D>();
+        cameraDelay = Time.deltaTime * 2;
         player = GameObject.FindGameObjectWithTag("Player").GetComponent<Transform>();
         currentResolutionRatio = Camera.main.aspect;
+
+        instance = this;
 
         ChangeAspectRatioBox();
     }
@@ -20,7 +35,16 @@ public class FollowPlayer : MonoBehaviour {
         if (currentResolutionRatio != Camera.main.aspect)
             ChangeAspectRatioBox();
         
+        HandleEnteredBounds();
         FollowPlayerPos();
+    }
+
+    void HandleEnteredBounds() {
+        foreach (BoundaryManager boundaryManager in FindObjectsOfType<BoundaryManager>()) {
+            if (boundaryManager.enteredBounds) {
+                FollowPlayerUntilPassBounds(boundaryManager);
+            }
+        }
     }
 
     void ChangeAspectRatioBox() {
@@ -48,21 +72,82 @@ public class FollowPlayer : MonoBehaviour {
         }
     }
 
-    void FollowPlayerPos() {
-        if (GameObject.Find("Boundary")) {
-            transform.position = new Vector3(Mathf.Clamp(
-                // X
-                player.position.x, GameObject.Find("Boundary").GetComponent<BoxCollider2D>().bounds.min.x + cameraBox.size.x / 2, 
-                GameObject.Find("Boundary").GetComponent<BoxCollider2D>().bounds.max.x - cameraBox.size.x / 2),
-                
-                // Y
-                Mathf.Clamp(player.position.y, GameObject.Find("Boundary").GetComponent<BoxCollider2D>().bounds.min.y + cameraBox.size.y / 2, 
-                GameObject.Find("Boundary").GetComponent<BoxCollider2D>().bounds.max.y - cameraBox.size.y / 2),
-                
-                // Z
-                transform.position.z
-                );
+    // Pra debugar no Gizmos a area do limite atual
+    private Vector3 boundsMax;
+    private Vector3 boundsMin;
+
+    void FollowPlayerUntilPassBounds(BoundaryManager currentBounds) {
+        // Seguindo o player livremente
+        if (!isAbleToClamp) {
+            transform.position = Vector3.Lerp(transform.position, new Vector3(player.position.x, player.position.y, transform.position.z), cameraDelay);
         }
+
+        // Enquanto o player nao entrar na area, continuar deixando a camera "livre"
+        if (!currentBounds.alreadyClampedThisBounds) {
+            isAbleToClamp = false;
+        }
+
+        // Cada ponto limite da camera
+        Vector3 rightSide = new Vector3(player.transform.position.x + cameraBox.size.x / 2, player.transform.position.y, 0f);
+        Vector3 leftSide = new Vector3(player.transform.position.x - cameraBox.size.x / 2, player.transform.position.y, 0f);
+        Vector3 topSide = new Vector3(player.transform.position.x, player.transform.position.y + cameraBox.size.y / 2, 0f);
+        Vector3 bottomSide = new Vector3(player.transform.position.x, player.transform.position.y - cameraBox.size.y / 2, 0f);
+
+        // Debug
+        boundsMax = currentBounds.managerBox.bounds.max;
+        boundsMin = currentBounds.managerBox.bounds.min;
+
+        // Verificando se o player esta dentro da area limite
+        if (
+            currentBounds.managerBox.bounds.min.x < leftSide.x 
+            && currentBounds.managerBox.bounds.max.x > rightSide.x
+            && currentBounds.managerBox.bounds.min.y < topSide.y
+            && currentBounds.managerBox.bounds.max.y > bottomSide.y
+            && !currentBounds.alreadyClampedThisBounds
+        ) {
+            currentBounds.alreadyClampedThisBounds = true;
+            isAbleToClamp = true;
+        }
+    }
+
+    void FollowPlayerPos() {
+        GameObject boundary = GameObject.Find("Boundary");
+
+        if (boundary != null) {
+            playerClampX = Mathf.Clamp(player.position.x, boundary.GetComponent<BoxCollider2D>().bounds.min.x + cameraBox.size.x / 2, boundary.GetComponent<BoxCollider2D>().bounds.max.x - cameraBox.size.x / 2);
+            playerClampY = Mathf.Clamp(player.position.y, boundary.GetComponent<BoxCollider2D>().bounds.min.y + cameraBox.size.y / 2, boundary.GetComponent<BoxCollider2D>().bounds.max.y - cameraBox.size.y / 2);
+        }
+
+        // Seguindo o player com o Clamp no limite atual
+        if (GameObject.Find("Boundary") && isAbleToClamp) {
+            transform.position = Vector3.Lerp(transform.position, new Vector3(playerClampX, playerClampY, transform.position.z), cameraDelay);
+        }
+    }
+
+    // Debug
+    void OnDrawGizmos() {
+        // Limites da camera
+        Gizmos.color = Color.green;
+
+        if (cameraBox != null) {
+            Vector3 rightSide = new Vector3(transform.position.x + cameraBox.size.x / 2, transform.position.y, 0f);
+            Vector3 leftSide = new Vector3(transform.position.x - cameraBox.size.x / 2, transform.position.y, 0f);
+            Vector3 topSide = new Vector3(transform.position.x, transform.position.y + cameraBox.size.y / 2, 0f);
+            Vector3 bottomSide = new Vector3(transform.position.x, transform.position.y - cameraBox.size.y / 2, 0f);
+
+            Gizmos.DrawWireSphere(rightSide, 0.5f);
+            Gizmos.DrawWireSphere(leftSide, 0.5f);
+            Gizmos.DrawWireSphere(topSide, 0.5f);
+            Gizmos.DrawWireSphere(bottomSide, 0.5f);
+        }
+
+        // Limites do BoundaryManager
+        Gizmos.color = Color.white;
+
+        Gizmos.DrawWireSphere(boundsMax, 0.5f);
+        Gizmos.DrawWireSphere(boundsMin, 0.5f);
+        Gizmos.DrawWireSphere(new Vector3(boundsMin.x, boundsMax.y, 0f), 0.5f);
+        Gizmos.DrawWireSphere(new Vector3(boundsMax.x, boundsMin.y, 0f), 0.5f);
     }
 
 }
