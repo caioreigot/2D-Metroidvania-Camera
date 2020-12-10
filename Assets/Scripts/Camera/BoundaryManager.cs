@@ -8,6 +8,8 @@ public class BoundaryManager : MonoBehaviour {
     private Transform player; // Position of Player
     public GameObject boundary; // The real camera boundary which will be activated and deactivated
 
+    private bool alreadyEntered = false;
+
     void Start() {
         managerBox = GetComponent<BoxCollider2D>();
         player = GameObject.FindGameObjectWithTag("Player").GetComponent<Transform>();
@@ -23,6 +25,13 @@ public class BoundaryManager : MonoBehaviour {
             boundary.SetActive(true);
         } else {
             boundary.SetActive(false);
+        }
+
+        // Identifying if player entered a new boundary
+        if (boundary.activeSelf && !alreadyEntered) {
+            alreadyEntered = true;
+        } else if (!boundary.activeSelf) {
+            alreadyEntered = false;
         }
     }
 

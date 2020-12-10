@@ -60,7 +60,8 @@ public class FollowPlayer : MonoBehaviour {
                 GameObject.Find("Boundary").GetComponent<BoxCollider2D>().bounds.max.y - cameraBox.size.y / 2),
                 
                 // Z
-                transform.position.z);
+                transform.position.z
+                );
         }
     }
 
