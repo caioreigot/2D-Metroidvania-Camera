@@ -14,7 +14,6 @@ public class FollowPlayer : MonoBehaviour {
     private bool isAbleToClamp = true;
 
     private float cameraDelay;
-
     private float playerClampX;
     private float playerClampY;
 
@@ -73,21 +72,25 @@ public class FollowPlayer : MonoBehaviour {
     }
 
     // Pra debugar no Gizmos a area do limite atual
+    // To debug the current limit area in Gizmos
     private Vector3 boundsMax;
     private Vector3 boundsMin;
 
     void FollowPlayerUntilPassBounds(BoundaryManager currentBounds) {
         // Seguindo o player livremente
+        // Following the player freely
         if (!isAbleToClamp) {
             transform.position = Vector3.Lerp(transform.position, new Vector3(player.position.x, player.position.y, transform.position.z), cameraDelay);
         }
 
         // Enquanto o player nao entrar na area, continuar deixando a camera "livre"
+        // Until the player enters the area, keep leaving the camera "free"
         if (!currentBounds.alreadyClampedThisBounds) {
             isAbleToClamp = false;
         }
 
         // Cada ponto limite da camera
+        // Each limit point of the camera
         Vector3 rightSide = new Vector3(player.transform.position.x + cameraBox.size.x / 2, player.transform.position.y, 0f);
         Vector3 leftSide = new Vector3(player.transform.position.x - cameraBox.size.x / 2, player.transform.position.y, 0f);
         Vector3 topSide = new Vector3(player.transform.position.x, player.transform.position.y + cameraBox.size.y / 2, 0f);
@@ -98,6 +101,7 @@ public class FollowPlayer : MonoBehaviour {
         boundsMin = currentBounds.managerBox.bounds.min;
 
         // Verificando se o player esta dentro da area limite
+        // Checking if the player is within the limit area
         if (
             currentBounds.managerBox.bounds.min.x < leftSide.x 
             && currentBounds.managerBox.bounds.max.x > rightSide.x
@@ -119,6 +123,7 @@ public class FollowPlayer : MonoBehaviour {
         }
 
         // Seguindo o player com o Clamp no limite atual
+        // Following the player with the Clamp at the current limit
         if (GameObject.Find("Boundary") && isAbleToClamp) {
             transform.position = Vector3.Lerp(transform.position, new Vector3(playerClampX, playerClampY, transform.position.z), cameraDelay);
         }
@@ -127,6 +132,7 @@ public class FollowPlayer : MonoBehaviour {
     // Debug
     void OnDrawGizmos() {
         // Limites da camera
+        // Camera limits
         Gizmos.color = Color.green;
 
         if (cameraBox != null) {
@@ -142,6 +148,7 @@ public class FollowPlayer : MonoBehaviour {
         }
 
         // Limites do BoundaryManager
+        // BoundaryManager limits
         Gizmos.color = Color.white;
 
         Gizmos.DrawWireSphere(boundsMax, 0.5f);

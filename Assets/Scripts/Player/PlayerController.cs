@@ -14,23 +14,8 @@ public class PlayerController : MonoBehaviour {
     }
 
     void FixedUpdate() {
-        movement.x = Input.GetAxis("Horizontal"); // -1, 0, 1
+        movement.x = Input.GetAxis("Horizontal");
         movement.y = Input.GetAxis("Vertical");
-
-        #region Own implementation test
-        /*
-        if (Input.GetKey(KeyCode.D))
-            movement.x = Mathf.Lerp(movement.x, 1f, Time.deltaTime);
-
-        if (Input.GetKey(KeyCode.A))
-            movement.x = Mathf.Lerp(movement.x, -1f, Time.deltaTime);
-        
-        if (Input.GetKeyUp(KeyCode.D) || Input.GetKeyUp(KeyCode.A))
-            movement.x = 0f;
-
-        Debug.Log("X: " + movement.x + " Y: " + movement.y);
-        */
-        #endregion
 
         rb.velocity = new Vector2(movement.x, movement.y) * speed;
     }

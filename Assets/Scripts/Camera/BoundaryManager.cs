@@ -10,7 +10,10 @@ public class BoundaryManager : MonoBehaviour {
     private Transform player; // Position of Player
     public GameObject boundary; // The real camera boundary which will be activated and deactivated
 
+    [HideInInspector]
     public bool enteredBounds = false;
+
+    [HideInInspector]
     public bool alreadyClampedThisBounds = false;
 
     void Start() {
@@ -25,6 +28,7 @@ public class BoundaryManager : MonoBehaviour {
 
     void ManageBoundary() {
         // Verificando se o player está dentro do limite da area
+        // Checking if the player is within the area boundary
         if (managerBox.bounds.min.x < player.position.x && player.position.x < managerBox.bounds.max.x
         && managerBox.bounds.min.y < player.position.y && player.position.y < managerBox.bounds.max.y) {
             boundary.SetActive(true);
@@ -33,6 +37,7 @@ public class BoundaryManager : MonoBehaviour {
         }
 
         // Identificando se o player esta dentro de um novo limite
+        // Identifying whether the player is within a new limit
         if (boundary.activeSelf && !enteredBounds) {
             alreadyClampedThisBounds = false;
             enteredBounds = true;
