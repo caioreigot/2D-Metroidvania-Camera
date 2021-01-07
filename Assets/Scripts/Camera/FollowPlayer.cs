@@ -1,4 +1,4 @@
-﻿using System.Threading;
+using System.Threading;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,9 +7,7 @@ public class FollowPlayer : MonoBehaviour {
 
     public static FollowPlayer instance;
 
-    private BoxCollider2D cameraBox; // The BoxCollider of camera
-    private Transform player; // Position of player
-    private float currentResolutionRatio; // Will track the current screen resolution ratio
+    private Transform player;
 
     private bool isAbleToClamp = true;
 
@@ -19,21 +17,23 @@ public class FollowPlayer : MonoBehaviour {
 
     private Vector3 lastPlayerPositionReached;
 
+    Vector3 leftPoint;
+    Vector3 rightPoint;
+    Vector3 bottomPoint;
+    Vector3 topPoint;
+
+    private Camera cam;
+
     void Start() {
-        cameraBox = GetComponent<BoxCollider2D>();
+        cam = Camera.main;
+
         cameraDelay = Time.deltaTime * 2;
         player = GameObject.FindGameObjectWithTag("Player").GetComponent<Transform>();
-        currentResolutionRatio = Camera.main.aspect;
 
         instance = this;
-
-        ChangeAspectRatioBox();
     }
 
     void Update() {
-        if (currentResolutionRatio != Camera.main.aspect)
-            ChangeAspectRatioBox();
-        
         HandleEnteredBounds();
         FollowPlayerPos();
     }
@@ -46,67 +46,36 @@ public class FollowPlayer : MonoBehaviour {
         }
     }
 
-    void ChangeAspectRatioBox() {
-        currentResolutionRatio = Camera.main.aspect;
-
-        // 16:10 ratio
-        if (Camera.main.aspect >= 1.59f && Camera.main.aspect < 1.7f) {
-            cameraBox.size = new Vector2(16f, 10f);
-        }
-        // 16:9 ratio
-        if (Camera.main.aspect >= 1.7f && Camera.main.aspect < 1.8f) {
-            cameraBox.size = new Vector2(17.78f, 10f);
-        }
-        // 5:4 ratio
-        if (Camera.main.aspect >= 1.2f && Camera.main.aspect < 1.3f) {
-            cameraBox.size = new Vector2(12.49f, 10f);
-        }
-        // 4:3 ratio
-        if (Camera.main.aspect >= 1.3f && Camera.main.aspect < 1.4f) {
-            cameraBox.size = new Vector2(13.34f, 10f);
-        }
-        // 3:2 ratio
-        if (Camera.main.aspect >= 1.5f && Camera.main.aspect < 1.59f) {
-            cameraBox.size = new Vector2(14.97f, 10f);
-        }
-    }
-
-    // Pra debugar no Gizmos a area do limite atual
-    // To debug the current limit area in Gizmos
     private Vector3 boundsMax;
     private Vector3 boundsMin;
 
     void FollowPlayerUntilPassBounds(BoundaryManager currentBounds) {
         // Seguindo o player livremente
-        // Following the player freely
         if (!isAbleToClamp) {
             transform.position = Vector3.Lerp(transform.position, new Vector3(player.position.x, player.position.y, transform.position.z), cameraDelay);
         }
 
         // Enquanto o player nao entrar na area, continuar deixando a camera "livre"
-        // Until the player enters the area, keep leaving the camera "free"
         if (!currentBounds.alreadyClampedThisBounds) {
             isAbleToClamp = false;
         }
 
         // Cada ponto limite da camera
-        // Each limit point of the camera
-        Vector3 rightSide = new Vector3(player.transform.position.x + cameraBox.size.x / 2, player.transform.position.y, 0f);
-        Vector3 leftSide = new Vector3(player.transform.position.x - cameraBox.size.x / 2, player.transform.position.y, 0f);
-        Vector3 topSide = new Vector3(player.transform.position.x, player.transform.position.y + cameraBox.size.y / 2, 0f);
-        Vector3 bottomSide = new Vector3(player.transform.position.x, player.transform.position.y - cameraBox.size.y / 2, 0f);
+        Vector3 leftPoint = cam.ScreenToWorldPoint(new Vector3(0f, cam.pixelHeight / 2));
+        Vector3 rightPoint = cam.ScreenToWorldPoint(new Vector3(cam.pixelWidth, cam.pixelHeight / 2));
+        Vector3 bottomPoint = cam.ScreenToWorldPoint(new Vector3(cam.pixelWidth / 2, 0f));
+        Vector3 topPoint = cam.ScreenToWorldPoint(new Vector3(cam.pixelWidth / 2, cam.pixelHeight));
 
         // Debug
         boundsMax = currentBounds.managerBox.bounds.max;
         boundsMin = currentBounds.managerBox.bounds.min;
 
         // Verificando se o player esta dentro da area limite
-        // Checking if the player is within the limit area
         if (
-            currentBounds.managerBox.bounds.min.x < leftSide.x 
-            && currentBounds.managerBox.bounds.max.x > rightSide.x
-            && currentBounds.managerBox.bounds.min.y < topSide.y
-            && currentBounds.managerBox.bounds.max.y > bottomSide.y
+            currentBounds.managerBox.bounds.min.x < leftPoint.x 
+            && currentBounds.managerBox.bounds.max.x > rightPoint.x
+            && currentBounds.managerBox.bounds.min.y < topPoint.y
+            && currentBounds.managerBox.bounds.max.y > bottomPoint.y
             && !currentBounds.alreadyClampedThisBounds
         ) {
             currentBounds.alreadyClampedThisBounds = true;
@@ -118,37 +87,31 @@ public class FollowPlayer : MonoBehaviour {
         GameObject boundary = GameObject.Find("Boundary");
 
         if (boundary != null) {
-            playerClampX = Mathf.Clamp(player.position.x, boundary.GetComponent<BoxCollider2D>().bounds.min.x + cameraBox.size.x / 2, boundary.GetComponent<BoxCollider2D>().bounds.max.x - cameraBox.size.x / 2);
-            playerClampY = Mathf.Clamp(player.position.y, boundary.GetComponent<BoxCollider2D>().bounds.min.y + cameraBox.size.y / 2, boundary.GetComponent<BoxCollider2D>().bounds.max.y - cameraBox.size.y / 2);
+            playerClampX = Mathf.Clamp(player.position.x, boundary.GetComponent<BoxCollider2D>().bounds.min.x + Vector3.Distance(transform.position, leftPoint), boundary.GetComponent<BoxCollider2D>().bounds.max.x - Vector3.Distance(transform.position, rightPoint));
+            playerClampY = Mathf.Clamp(player.position.y, boundary.GetComponent<BoxCollider2D>().bounds.min.y + Vector3.Distance(transform.position, bottomPoint), boundary.GetComponent<BoxCollider2D>().bounds.max.y - Vector3.Distance(transform.position, topPoint));
         }
 
         // Seguindo o player com o Clamp no limite atual
-        // Following the player with the Clamp at the current limit
         if (GameObject.Find("Boundary") && isAbleToClamp) {
             transform.position = Vector3.Lerp(transform.position, new Vector3(playerClampX, playerClampY, transform.position.z), cameraDelay);
         }
     }
 
-    // Debug
     void OnDrawGizmos() {
         // Limites da camera
-        // Camera limits
         Gizmos.color = Color.green;
 
-        if (cameraBox != null) {
-            Vector3 rightSide = new Vector3(transform.position.x + cameraBox.size.x / 2, transform.position.y, 0f);
-            Vector3 leftSide = new Vector3(transform.position.x - cameraBox.size.x / 2, transform.position.y, 0f);
-            Vector3 topSide = new Vector3(transform.position.x, transform.position.y + cameraBox.size.y / 2, 0f);
-            Vector3 bottomSide = new Vector3(transform.position.x, transform.position.y - cameraBox.size.y / 2, 0f);
+        leftPoint = Camera.main.ScreenToWorldPoint(new Vector3(0f, Camera.main.pixelHeight / 2));
+        rightPoint = Camera.main.ScreenToWorldPoint(new Vector3(Camera.main.pixelWidth, Camera.main.pixelHeight / 2));
+        bottomPoint = Camera.main.ScreenToWorldPoint(new Vector3(Camera.main.pixelWidth / 2, 0f));
+        topPoint = Camera.main.ScreenToWorldPoint(new Vector3(Camera.main.pixelWidth / 2, Camera.main.pixelHeight));
 
-            Gizmos.DrawWireSphere(rightSide, 0.5f);
-            Gizmos.DrawWireSphere(leftSide, 0.5f);
-            Gizmos.DrawWireSphere(topSide, 0.5f);
-            Gizmos.DrawWireSphere(bottomSide, 0.5f);
-        }
+        Gizmos.DrawWireSphere(rightPoint, 0.5f);
+        Gizmos.DrawWireSphere(leftPoint, 0.5f);
+        Gizmos.DrawWireSphere(topPoint, 0.5f);
+        Gizmos.DrawWireSphere(bottomPoint, 0.5f);
 
         // Limites do BoundaryManager
-        // BoundaryManager limits
         Gizmos.color = Color.white;
 
         Gizmos.DrawWireSphere(boundsMax, 0.5f);
