@@ -24,6 +24,8 @@ public class FollowPlayer : MonoBehaviour {
 
     private Camera cam;
 
+    public bool showDebug = false;
+
     void Start() {
         cam = Camera.main;
 
@@ -34,6 +36,7 @@ public class FollowPlayer : MonoBehaviour {
     }
 
     void Update() {
+        CalculateCamPoints();
         HandleEnteredBounds();
         FollowPlayerPos();
     }
@@ -46,25 +49,28 @@ public class FollowPlayer : MonoBehaviour {
         }
     }
 
+    void CalculateCamPoints() {
+        // Each limit point of the camera
+        leftPoint = Camera.main.ScreenToWorldPoint(new Vector3(0f, Camera.main.pixelHeight / 2));
+        rightPoint = Camera.main.ScreenToWorldPoint(new Vector3(Camera.main.pixelWidth, Camera.main.pixelHeight / 2));
+        bottomPoint = Camera.main.ScreenToWorldPoint(new Vector3(Camera.main.pixelWidth / 2, 0f));
+        topPoint = Camera.main.ScreenToWorldPoint(new Vector3(Camera.main.pixelWidth / 2, Camera.main.pixelHeight));
+    }
+
+    // Debug
     private Vector3 boundsMax;
     private Vector3 boundsMin;
 
     void FollowPlayerUntilPassBounds(BoundaryManager currentBounds) {
-        // Freely following player
+        // Following the player freely
         if (!isAbleToClamp) {
             transform.position = Vector3.Lerp(transform.position, new Vector3(player.position.x, player.position.y, transform.position.z), cameraDelay);
         }
-        
-        // Until the player enters the area, continue following
+
+        // Until the player enters the area, keep "leaving the camera free"
         if (!currentBounds.alreadyClampedThisBounds) {
             isAbleToClamp = false;
         }
-
-        // Each camera limit point
-        Vector3 leftPoint = cam.ScreenToWorldPoint(new Vector3(0f, cam.pixelHeight / 2));
-        Vector3 rightPoint = cam.ScreenToWorldPoint(new Vector3(cam.pixelWidth, cam.pixelHeight / 2));
-        Vector3 bottomPoint = cam.ScreenToWorldPoint(new Vector3(cam.pixelWidth / 2, 0f));
-        Vector3 topPoint = cam.ScreenToWorldPoint(new Vector3(cam.pixelWidth / 2, cam.pixelHeight));
 
         // Debug
         boundsMax = currentBounds.managerBox.bounds.max;
@@ -91,13 +97,15 @@ public class FollowPlayer : MonoBehaviour {
             playerClampY = Mathf.Clamp(player.position.y, boundary.GetComponent<BoxCollider2D>().bounds.min.y + Vector3.Distance(transform.position, bottomPoint), boundary.GetComponent<BoxCollider2D>().bounds.max.y - Vector3.Distance(transform.position, topPoint));
         }
 
-        // Following the player with the Clamp at the current limit
+        // Following the player with the clamp at the current limit
         if (GameObject.Find("Boundary") && isAbleToClamp) {
             transform.position = Vector3.Lerp(transform.position, new Vector3(playerClampX, playerClampY, transform.position.z), cameraDelay);
         }
     }
 
     void OnDrawGizmos() {
+        if (!showDebug) return;
+        
         // Camera limits
         Gizmos.color = Color.green;
 
